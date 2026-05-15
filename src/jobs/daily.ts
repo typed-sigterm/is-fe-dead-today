@@ -1,13 +1,14 @@
 import { existsSync } from 'node:fs';
-import process from 'node:process';
 import { Temporal } from '@js-temporal/polyfill';
 import { runAgent } from '../agent.js';
+import { validateEnv } from '../env.js';
 import { fetchHN } from '../fetchers/hn.js';
 import { fetchJuyaAIDaily } from '../fetchers/juya-ai-daily.js';
 import { fetchAllRSS } from '../fetchers/rss.js';
 import { createNewsPR } from '../github.js';
 
 async function main() {
+  const env = validateEnv();
   const now = Temporal.Now.zonedDateTimeISO();
   const yyyy = String(now.year);
   const MM = String(now.month).padStart(2, '0');
@@ -30,8 +31,8 @@ async function main() {
 
   const markdownReport = await runAgent(items.slice(0, 100)); // prevent payload from being too crazy
 
-  const owner = process.env.GITHUB_REPOSITORY?.split('/')[0];
-  const repo = process.env.GITHUB_REPOSITORY?.split('/')[1];
+  const owner = env.GITHUB_REPOSITORY?.split('/')[0];
+  const repo = env.GITHUB_REPOSITORY?.split('/')[1];
 
   if (!owner || !repo) {
     console.warn('GITHUB_REPOSITORY not set. Skipping PR creation.');

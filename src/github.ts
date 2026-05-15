@@ -9,16 +9,12 @@ let _installationOctokit: Octokit | undefined;
 export function getAppOctokit() {
   if (_appOctokit)
     return _appOctokit;
-
-  const privateKey = process.env.APP_PRIVATE_KEY;
-  const appId = process.env.APP_CLIENT_ID;
-
-  if (!privateKey || !appId)
-    throw new Error('APP_PRIVATE_KEY and APP_CLIENT_ID must be set');
-
   return _appOctokit = new Octokit({
     authStrategy: createAppAuth,
-    auth: { appId, privateKey },
+    auth: {
+      appId: process.env.APP_CLIENT_ID,
+      privateKey: process.env.APP_PRIVATE_KEY,
+    },
   });
 }
 
@@ -37,8 +33,8 @@ export async function getInstallationOctokit(): Promise<Octokit> {
   return _installationOctokit = new Octokit({
     authStrategy: createAppAuth,
     auth: {
-      appId: process.env.APP_CLIENT_ID!,
-      privateKey: process.env.APP_PRIVATE_KEY!,
+      appId: process.env.APP_CLIENT_ID,
+      privateKey: process.env.APP_PRIVATE_KEY,
       installationId: installation.id,
     },
   });
@@ -98,12 +94,12 @@ export async function createNewsPR(owner: string, repo: string, markdown: string
     branch: branchName,
     sha,
     committer: {
-      name: 'is-fe-dead-today[bot]',
-      email: '3725737+is-fe-dead-today[bot]@users.noreply.github.com',
+      name: process.env.COMMIT_AUTHOR_NAME!,
+      email: process.env.COMMIT_AUTHOR_EMAIL!,
     },
     author: {
-      name: 'is-fe-dead-today[bot]',
-      email: '3725737+is-fe-dead-today[bot]@users.noreply.github.com',
+      name: process.env.COMMIT_AUTHOR_NAME!,
+      email: process.env.COMMIT_AUTHOR_EMAIL!,
     },
   });
 

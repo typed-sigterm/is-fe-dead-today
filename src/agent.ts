@@ -1,13 +1,15 @@
 import type { NewsItem } from './types.js';
-import process from 'node:process';
 import { OpenRouter } from '@openrouter/agent';
 import { tool } from '@openrouter/agent/tool';
 import * as cheerio from 'cheerio';
 import { z } from 'zod';
 import instructions from './agent.prompt.md' with { type: 'text' };
+import { validateEnv } from './env.js';
+
+const env = validateEnv();
 
 const client = new OpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
+  apiKey: env.OPENROUTER_API_KEY,
   httpReferer: 'https://is-fe-dead-today.by-ts.top',
   appTitle: 'Is Frontend Engineering Dead Today',
   appCategories: 'personal-agent',

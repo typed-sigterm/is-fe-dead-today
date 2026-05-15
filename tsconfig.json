@@ -1,5 +1,6 @@
 {
   "extends": "@tsconfig/bun",
+  "files": ["src/env.d.ts"],
   "include": [
     "src/**/*.ts",
     "eslint.config.js"

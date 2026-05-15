@@ -1,10 +1,11 @@
-import process from 'node:process';
+import { validateEnv } from '../env.js';
 import { getInstallationOctokit } from '../github.js';
 
 async function main() {
-  const owner = process.env.GITHUB_REPOSITORY?.split('/')[0];
-  const repo = process.env.GITHUB_REPOSITORY?.split('/')[1];
-  const prNumber = process.env.PR_NUMBER;
+  const env = validateEnv();
+  const owner = env.GITHUB_REPOSITORY?.split('/')[0];
+  const repo = env.GITHUB_REPOSITORY?.split('/')[1];
+  const prNumber = env.PR_NUMBER;
 
   if (!owner || !repo || !prNumber) {
     console.warn('GITHUB_REPOSITORY or PR_NUMBER not set.');
