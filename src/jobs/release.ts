@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { validateEnv } from '../env.js';
 import { getInstallationOctokit } from '../github.js';
 
@@ -17,7 +19,7 @@ async function main() {
   const { data: pr } = await octokit.rest.pulls.get({
     owner,
     repo,
-    pull_number: Number.parseInt(prNumber, 10),
+    pull_number: Number.parseInt(prNumber),
   });
 
   // Validate label
@@ -38,9 +40,7 @@ async function main() {
     return;
   }
 
-  const dateStr = branchName.replace('news/', '');
-  const tag = dateStr;
-
+  const tag = branchName.replace('news/', '');
   console.log(`Creating tag and release for ${tag}...`);
 
   // 1. Create Tag Object
@@ -67,18 +67,16 @@ async function main() {
   });
 
   // 3. Create Release mapping to discussion category if possible
-  // NOTE: For discussion_category_name you need the exact category name (e.g. 'General' or 'Announcements').
-  // We'll omit it so it just generates a release, unless specified.
+  const body = (await readFile(
+    path.resolve(import.meta.dirname, `../../news/${tag.replaceAll('-', '/')}.md`),
+  )).toString();
   await octokit.rest.repos.createRelease({
     owner,
     repo,
     tag_name: tag,
     name: tag,
-    body: pr.body || `Daily FE news for ${tag}`,
-    draft: false,
-    prerelease: false,
-    generate_release_notes: true,
-    // discussion_category_name: "Announcements" // Uncomment and configure if a specific category is set up
+    body,
+    discussion_category_name: 'Updates',
   });
 
   console.log(`Successfully created release ${tag}`);

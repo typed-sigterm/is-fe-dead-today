@@ -52,6 +52,8 @@ Snippet: ${item.contentSnippet || 'No snippet available'}
     tools: [readArticleTool],
   });
 
-  const text = await result.getText();
+  let text = await result.getText();
+  if (text.at(-1) !== '\n')
+    text += '\n';
   return text;
 }
