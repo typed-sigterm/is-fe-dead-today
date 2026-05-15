@@ -10,15 +10,15 @@ export function getAppOctokit() {
   if (_appOctokit)
     return _appOctokit;
 
-  const clientSecret = process.env.APP_CLIENT_SECRET;
+  const privateKey = process.env.APP_PRIVATE_KEY;
   const appId = process.env.APP_CLIENT_ID;
 
-  if (!clientSecret || !appId)
-    throw new Error('APP_CLIENT_SECRET and APP_CLIENT_ID must be set');
+  if (!privateKey || !appId)
+    throw new Error('APP_PRIVATE_KEY and APP_CLIENT_ID must be set');
 
   return _appOctokit = new Octokit({
     authStrategy: createAppAuth,
-    auth: { appId, clientSecret },
+    auth: { appId, privateKey },
   });
 }
 
