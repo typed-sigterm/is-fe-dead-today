@@ -1,0 +1,24 @@
+{
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@js-temporal/polyfill": "^0.5.1",
+    "@octokit/auth-app": "^8.2.0",
+    "@openrouter/agent": "^0.6.0",
+    "cheerio": "^1.2.0",
+    "octokit": "^5.0.5",
+    "rss-parser": "^3.13.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^9.0.0",
+    "@tsconfig/bun": "^1.0.10",
+    "@typed-sigterm/eslint-config": "^1.7.1",
+    "@types/bun": "1.3.14",
+    "eslint": "^10.3.0",
+    "typescript": "^6.0.3"
+  },
+  "trustedDependencies": [
+    "@openrouter/sdk"
+  ]
+}

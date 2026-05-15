@@ -1,0 +1,21 @@
+name: Daily News Publisher
+
+on:
+  schedule:
+    - cron: '45 11 * * *' # Run daily at 00:00 UTC
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .tool-versions
+      - run: bun ci
+      - run: bun run src/jobs/daily.ts
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          APP_CLIENT_ID: ${{ vars.APP_CLIENT_ID }}

@@ -1,0 +1,22 @@
+name: Create Release on Merge
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .tool-versions
+      - run: bun ci
+      - run: bun run src/jobs/release.ts
+        env:
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          APP_CLIENT_ID: ${{ vars.APP_CLIENT_ID }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
