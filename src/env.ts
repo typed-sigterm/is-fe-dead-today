@@ -6,8 +6,6 @@ const envSchema = z.looseObject({
   APP_CLIENT_ID: z.string().min(1, 'APP_CLIENT_ID is required'),
   GITHUB_REPOSITORY: z.string().min(1, 'GITHUB_REPOSITORY is required'),
   OPENROUTER_API_KEY: z.string().optional(),
-  COMMIT_AUTHOR_NAME: z.string().optional(),
-  COMMIT_AUTHOR_EMAIL: z.string().optional(),
   PR_NUMBER: z.string().optional(),
 });
 

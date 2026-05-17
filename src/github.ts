@@ -1,7 +1,8 @@
 import { Buffer } from 'node:buffer';
 import process from 'node:process';
 import { createAppAuth } from '@octokit/auth-app';
-import { Octokit } from 'octokit';
+import { Octokit, RequestError } from 'octokit';
+import { buildRSS, RSS_PATH } from './rss.js';
 
 let _appOctokit: Octokit | undefined;
 let _installationOctokit: Octokit | undefined;
@@ -44,66 +45,66 @@ export async function createNewsPR(owner: string, repo: string, markdown: string
   const octokit = await getInstallationOctokit();
   const branchName = `news/${dateStr}`;
 
-  // 1. Get default branch sha
+  // 1. Get default branch
   const { data: repository } = await octokit.rest.repos.get({ owner, repo });
   const defaultBranch = repository.default_branch;
-  const { data: ref } = await octokit.rest.git.getRef({
-    owner,
-    repo,
-    ref: `heads/${defaultBranch}`,
-  });
+  const { data: defaultRef } = await octokit.rest.git.getRef({ owner, repo, ref: `heads/${defaultBranch}` });
 
-  // 2. Create branch
+  // 2. Create branch (idempotent)
   try {
-    await octokit.rest.git.createRef({
-      owner,
-      repo,
-      ref: `refs/heads/${branchName}`,
-      sha: ref.object.sha,
-    });
-  } catch (err: any) {
-    if (err.status !== 422)
-      throw err; // Ignore if branch exists
-  }
-
-  // 3. Create or update file
-  const path = `news/${yyyy}/${MM}/${dd}.md`;
-  let sha: string | undefined;
-
-  try {
-    const { data: file } = await octokit.rest.repos.getContent({
-      owner,
-      repo,
-      path,
-      ref: branchName,
-    });
-    if (!Array.isArray(file)) {
-      sha = file.sha;
-    }
-  } catch (err: any) {
-    if (err.status !== 404)
+    await octokit.rest.git.createRef({ owner, repo, ref: `refs/heads/${branchName}`, sha: defaultRef.object.sha });
+  } catch (err) {
+    if (err instanceof RequestError && err.status !== 422)
       throw err;
   }
 
-  await octokit.rest.repos.createOrUpdateFileContents({
+  // 3. Get branch HEAD
+  const { data: branchRef } = await octokit.rest.git.getRef({ owner, repo, ref: `heads/${branchName}` });
+  const { data: headCommit } = await octokit.rest.git.getCommit({ owner, repo, commit_sha: branchRef.object.sha });
+
+  // 4. Read existing RSS (branch → default fallback)
+  let existingRss = '';
+  for (const targetRef of [branchName, defaultBranch]) {
+    try {
+      const { data: file } = await octokit.rest.repos.getContent({ owner, repo, path: RSS_PATH, ref: targetRef });
+      if (!Array.isArray(file) && 'content' in file) {
+        existingRss = Buffer.from(file.content, 'base64').toString('utf-8');
+        break;
+      }
+    } catch (err) {
+      if (err instanceof RequestError && err.status !== 404)
+        throw err;
+    }
+  }
+
+  // 5. Create blobs for news + RSS in parallel
+  const newsPath = `news/${yyyy}/${MM}/${dd}.md`;
+  const rssContent = buildRSS(existingRss, { owner, repo, defaultBranch, dateStr });
+  const [newsBlob, rssBlob] = await Promise.all([
+    octokit.rest.git.createBlob({ owner, repo, content: Buffer.from(markdown).toString('base64'), encoding: 'base64' }),
+    octokit.rest.git.createBlob({ owner, repo, content: Buffer.from(rssContent).toString('base64'), encoding: 'base64' }),
+  ]);
+
+  // 6. Create tree, commit, update ref — single commit
+  const { data: tree } = await octokit.rest.git.createTree({
     owner,
     repo,
-    path,
-    message: `news: ${dateStr}`,
-    content: Buffer.from(markdown).toString('base64'),
-    branch: branchName,
-    sha,
-    committer: {
-      name: process.env.COMMIT_AUTHOR_NAME!,
-      email: process.env.COMMIT_AUTHOR_EMAIL!,
-    },
-    author: {
-      name: process.env.COMMIT_AUTHOR_NAME!,
-      email: process.env.COMMIT_AUTHOR_EMAIL!,
-    },
+    base_tree: headCommit.tree.sha,
+    tree: [
+      { path: newsPath, mode: '100644', type: 'blob', sha: newsBlob.data.sha },
+      { path: RSS_PATH, mode: '100644', type: 'blob', sha: rssBlob.data.sha },
+    ],
   });
+  const { data: commit } = await octokit.rest.git.createCommit({
+    owner,
+    repo,
+    message: `news: ${dateStr}`,
+    tree: tree.sha,
+    parents: [branchRef.object.sha],
+  });
+  await octokit.rest.git.updateRef({ owner, repo, ref: `heads/${branchName}`, sha: commit.sha });
 
-  // 4. Create PR
+  // 7. Create PR
   try {
     const { data: pr } = await octokit.rest.pulls.create({
       owner,
@@ -111,21 +112,11 @@ export async function createNewsPR(owner: string, repo: string, markdown: string
       title: `news: ${dateStr}`,
       head: branchName,
       base: defaultBranch,
-      body: `Auto-generated news for ${dateStr}`,
     });
-
-    // 5. Add label
-    await octokit.rest.issues.addLabels({
-      owner,
-      repo,
-      issue_number: pr.number,
-      labels: ['news publishing'],
-    });
-
+    await octokit.rest.issues.addLabels({ owner, repo, issue_number: pr.number, labels: ['news publishing'] });
     return pr;
-  } catch (err: any) {
-    // If PR already exists, it might throw a 422
-    if (err.status !== 422)
+  } catch (err) {
+    if (err instanceof RequestError && err.status !== 422)
       throw err;
     console.log(`PR for ${branchName} might already exist or there was a validation error`);
   }
@@ -144,19 +135,28 @@ export async function mergeOldPRs(owner: string, repo: string) {
   const SIX_HOURS = 6 * 60 * 60 * 1000;
 
   for (const pr of pulls) {
-    const hasLabel = pr.labels.some((l: any) => l.name === 'news publishing');
+    const hasLabel = pr.labels.some(l => l.name === 'news publishing');
     if (!hasLabel)
       continue;
 
     const createdAt = new Date(pr.created_at).getTime();
     if (now - createdAt >= SIX_HOURS) {
-      console.log(`Merging PR #${pr.number}`);
-      await octokit.rest.pulls.merge({
-        owner,
-        repo,
-        pull_number: pr.number,
-        merge_method: 'squash',
-      });
+      try {
+        console.log(`Merging PR #${pr.number}`);
+        await octokit.rest.pulls.merge({
+          owner,
+          repo,
+          pull_number: pr.number,
+          merge_method: 'squash',
+        });
+        await octokit.rest.git.deleteRef({
+          owner,
+          repo,
+          ref: `heads/${pr.head.ref}`,
+        });
+      } catch (e) {
+        console.error(`Failed to merge PR #${pr.number}:`, e);
+      }
     }
   }
 }

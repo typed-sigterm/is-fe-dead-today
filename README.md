@@ -1,6 +1,6 @@
 # Is Frontend Engineering Dead Today
 
-Reveals the current survival status of Frontend Engineering every day.
+Daily survival status of Frontend Engineering.
 
 To get subscribed, you can:
 
