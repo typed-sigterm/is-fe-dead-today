@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer';
 import process from 'node:process';
 import { createAppAuth } from '@octokit/auth-app';
 import { Octokit, RequestError } from 'octokit';
-import { buildRSS, RSS_PATH } from './rss.js';
+import { generateRSS, RSS_PATH } from './rss.js';
 
 let _appOctokit: Octokit | undefined;
 let _installationOctokit: Octokit | undefined;
@@ -62,30 +62,15 @@ export async function createNewsPR(owner: string, repo: string, markdown: string
   const { data: branchRef } = await octokit.rest.git.getRef({ owner, repo, ref: `heads/${branchName}` });
   const { data: headCommit } = await octokit.rest.git.getCommit({ owner, repo, commit_sha: branchRef.object.sha });
 
-  // 4. Read existing RSS (branch → default fallback)
-  let existingRss = '';
-  for (const targetRef of [branchName, defaultBranch]) {
-    try {
-      const { data: file } = await octokit.rest.repos.getContent({ owner, repo, path: RSS_PATH, ref: targetRef });
-      if (!Array.isArray(file) && 'content' in file) {
-        existingRss = Buffer.from(file.content, 'base64').toString('utf-8');
-        break;
-      }
-    } catch (err) {
-      if (err instanceof RequestError && err.status !== 404)
-        throw err;
-    }
-  }
-
-  // 5. Create blobs for news + RSS in parallel
+  // 4. Create blobs for news + RSS in parallel
   const newsPath = `news/${yyyy}/${MM}/${dd}.md`;
-  const rssContent = buildRSS(existingRss, { owner, repo, defaultBranch, dateStr });
+  const rssContent = generateRSS({ owner, repo, defaultBranch });
   const [newsBlob, rssBlob] = await Promise.all([
     octokit.rest.git.createBlob({ owner, repo, content: Buffer.from(markdown).toString('base64'), encoding: 'base64' }),
     octokit.rest.git.createBlob({ owner, repo, content: Buffer.from(rssContent).toString('base64'), encoding: 'base64' }),
   ]);
 
-  // 6. Create tree, commit, update ref — single commit
+  // 5. Create tree, commit, update ref — single commit
   const { data: tree } = await octokit.rest.git.createTree({
     owner,
     repo,
@@ -104,7 +89,7 @@ export async function createNewsPR(owner: string, repo: string, markdown: string
   });
   await octokit.rest.git.updateRef({ owner, repo, ref: `heads/${branchName}`, sha: commit.sha });
 
-  // 7. Create PR
+  // 6. Create PR
   try {
     const { data: pr } = await octokit.rest.pulls.create({
       owner,

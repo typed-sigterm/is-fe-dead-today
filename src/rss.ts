@@ -1,46 +1,45 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { Temporal } from '@js-temporal/polyfill';
 import * as cheerio from 'cheerio';
 
 const MAX_ITEMS = 14;
 const RSS_PATH = 'news/subscription.rss';
+const NEWS_DIR = resolve(import.meta.dirname, '..', 'news');
 
-const SKELETON = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
-  <channel>
-    <title>Is Frontend Engineering Dead Today</title>
-    <description>Daily survival status of Frontend Engineering</description>
-  </channel>
-</rss>`;
+export function generateRSS(): string {
+  const now = Temporal.Now.zonedDateTimeISO();
 
-export interface RSSFeedOptions {
-  owner: string
-  repo: string
-  defaultBranch: string
-  dateStr: string
-}
-
-export function buildRSS(existingXml: string, opts: RSSFeedOptions): string {
-  const { owner, repo, defaultBranch, dateStr } = opts;
-  const $ = cheerio.load(existingXml || SKELETON, { xml: true });
+  const $ = cheerio.load('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel></channel></rss>', { xml: true });
   const channel = $('channel');
 
-  // Ensure channel metadata
-  if (!channel.find('link').length)
-    channel.find('description').before('<link/>');
-  channel.find('link').text(`https://github.com/${owner}/${repo}`);
+  channel.append('<title>Is Frontend Engineering Dead Today</title>');
+  channel.append('<description>Daily survival status of Frontend Engineering</description>');
+  channel.append(`<link>https://is-frontend-dead-today.by-ts.top</link>`);
 
-  // Build new item
-  const [yyyy, MM, dd] = dateStr.split('-');
-  const link = `https://github.com/${owner}/${repo}/blob/${defaultBranch}/news/${yyyy}/${MM}/${dd}.md`;
+  for (let i = 0; i < MAX_ITEMS; i++) {
+    const date = now.subtract({ days: i });
+    const yyyy = String(date.year);
+    const MM = String(date.month).padStart(2, '0');
+    const dd = String(date.day).padStart(2, '0');
+    const dateStr = `${yyyy}-${MM}-${dd}`;
 
-  const item = cheerio.load('<item/>', { xml: true })('item');
-  item.append(`<title>${dateStr}</title>`);
-  item.append(`<link>${link}</link>`);
-  item.append(`<guid isPermaLink="true">${link}</guid>`);
-  item.append(`<pubDate>${new Date(`${dateStr}T00:00:00Z`).toUTCString()}</pubDate>`);
+    const filePath = resolve(NEWS_DIR, yyyy, MM, `${dd}.md`);
+    if (!existsSync(filePath))
+      continue;
 
-  // Prepend new item, trim to MAX_ITEMS
-  channel.find('item').first().before(item);
-  channel.find('item').slice(MAX_ITEMS).remove();
+    const link = `https://is-frontend-dead-today.by-ts.top/news/${yyyy}/${MM}/${dd}`;
+    const pubDate = new Date(`${dateStr}T00:00:00Z`).toUTCString();
+
+    const $item = cheerio.load('<item/>', { xml: true });
+    const item = $item('item');
+    item.append($item('<title>').text(dateStr));
+    item.append($item('<link>').text(link));
+    item.append($item('<guid>').attr('isPermaLink', 'true').text(link));
+    item.append($item('<pubDate>').text(pubDate));
+
+    channel.append(item);
+  }
 
   return $.xml();
 }
