@@ -1,6 +1,6 @@
 # Is Frontend Engineering Dead Today
 
-Daily survival status of Frontend Engineering.
+Daily survival status of Frontend Engineering, inspired by [a tweet by @hsn8086k](https://x.com/hsn8086k/status/2053009809662947812).
 
 To get subscribed, you can:
 
