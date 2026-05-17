@@ -13,7 +13,7 @@ Events that DO NOT mean "Frontend is dead":
 
 If the answer is YES, output:
 
-> Frontend is dead today because:
+> Frontend Engineering is dead today because:
 >
 > 1. **Event 1**: Summary of the most impactful event causing this in under 100 words.
 > 2. ...
@@ -27,7 +27,7 @@ Note that:
 
 If the answer is NO, output:
 
-> Frontend is alive today.
+> Frontend Engineering is alive today, but it's about to die.
 
 You should ALWAYS fully output English.
 
