@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Temporal } from '@js-temporal/polyfill';
 import * as cheerio from 'cheerio';
+import xmlFormat from 'xml-formatter';
 
 const MAX_ITEMS = 14;
 const RSS_PATH = 'news/subscription.rss';
@@ -41,7 +42,11 @@ export function generateRSS(): string {
     channel.append(item);
   }
 
-  return $.xml();
+  // eslint-disable-next-line prefer-template
+  return xmlFormat($.xml(), {
+    indentation: '  ',
+    lineSeparator: '\n',
+  }) + '\n';
 }
 
 export { RSS_PATH };

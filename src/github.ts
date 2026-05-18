@@ -64,7 +64,7 @@ export async function createNewsPR(owner: string, repo: string, markdown: string
 
   // 4. Create blobs for news + RSS in parallel
   const newsPath = `news/${yyyy}/${MM}/${dd}.md`;
-  const rssContent = generateRSS({ owner, repo, defaultBranch });
+  const rssContent = generateRSS();
   const [newsBlob, rssBlob] = await Promise.all([
     octokit.rest.git.createBlob({ owner, repo, content: Buffer.from(markdown).toString('base64'), encoding: 'base64' }),
     octokit.rest.git.createBlob({ owner, repo, content: Buffer.from(rssContent).toString('base64'), encoding: 'base64' }),
@@ -89,7 +89,6 @@ export async function createNewsPR(owner: string, repo: string, markdown: string
   });
   await octokit.rest.git.updateRef({ owner, repo, ref: `heads/${branchName}`, sha: commit.sha });
 
-  // 6. Create PR
   try {
     const { data: pr } = await octokit.rest.pulls.create({
       owner,
@@ -98,12 +97,16 @@ export async function createNewsPR(owner: string, repo: string, markdown: string
       head: branchName,
       base: defaultBranch,
     });
-    await octokit.rest.issues.addLabels({ owner, repo, issue_number: pr.number, labels: ['news publishing'] });
-    return pr;
+    await octokit.rest.issues.addLabels({
+      owner,
+      repo,
+      issue_number: pr.number,
+      labels: ['news publishing'],
+    });
   } catch (err) {
     if (err instanceof RequestError && err.status !== 422)
       throw err;
-    console.log(`PR for ${branchName} might already exist or there was a validation error`);
+    console.log(`PR for ${branchName} might already exist`);
   }
 }
 

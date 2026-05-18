@@ -8,6 +8,7 @@
     "cheerio": "^1.2.0",
     "octokit": "^5.0.5",
     "rss-parser": "^3.13.0",
+    "xml-formatter": "^3.7.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
