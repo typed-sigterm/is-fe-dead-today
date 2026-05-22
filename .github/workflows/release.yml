@@ -2,8 +2,7 @@ name: Create Release on Merge
 
 on:
   pull_request:
-    types:
-      - closed
+    types: closed
 
 jobs:
   release:
@@ -14,6 +13,10 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: .tool-versions
+      - uses: actions/cache@v5
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
       - run: bun ci
       - run: bun run src/jobs/release.ts
         env:
