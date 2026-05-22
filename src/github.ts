@@ -64,7 +64,7 @@ export async function createNewsPR(owner: string, repo: string, markdown: string
 
   // 4. Create blobs for news + RSS in parallel
   const newsPath = `news/${yyyy}/${MM}/${dd}.md`;
-  const rssContent = generateRSS();
+  const rssContent = await generateRSS();
   const [newsBlob, rssBlob] = await Promise.all([
     octokit.rest.git.createBlob({ owner, repo, content: Buffer.from(markdown).toString('base64'), encoding: 'base64' }),
     octokit.rest.git.createBlob({ owner, repo, content: Buffer.from(rssContent).toString('base64'), encoding: 'base64' }),

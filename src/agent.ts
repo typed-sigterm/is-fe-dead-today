@@ -1,4 +1,4 @@
-import type { NewsItem } from './types.js';
+import type { NewsItem } from './utils.js';
 import { OpenRouter } from '@openrouter/agent';
 import { tool } from '@openrouter/agent/tool';
 import * as cheerio from 'cheerio';

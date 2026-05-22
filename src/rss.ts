@@ -1,14 +1,14 @@
-import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Temporal } from '@js-temporal/polyfill';
 import * as cheerio from 'cheerio';
 import xmlFormat from 'xml-formatter';
+import { fileExists, readLocalNews } from './utils.js';
 
 const MAX_ITEMS = 14;
-const RSS_PATH = 'news/subscription.rss';
-const NEWS_DIR = resolve(import.meta.dirname, '..', 'news');
+export const RSS_PATH = 'news/subscription.rss';
+const NEWS_DIR = resolve(import.meta.dirname, '../news');
 
-export function generateRSS(): string {
+export async function generateRSS(): Promise<string> {
   const now = Temporal.Now.zonedDateTimeISO();
 
   const $ = cheerio.load('<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel></channel></rss>', { xml: true });
@@ -26,18 +26,22 @@ export function generateRSS(): string {
     const dateStr = `${yyyy}-${MM}-${dd}`;
 
     const filePath = resolve(NEWS_DIR, yyyy, MM, `${dd}.md`);
-    if (!existsSync(filePath))
+    if (!await fileExists(filePath))
       continue;
 
-    const link = `https://is-frontend-dead-today.by-ts.top/news/${yyyy}/${MM}/${dd}`;
-    const pubDate = new Date(`${dateStr}T00:00:00Z`).toUTCString();
+    const link = `http://github.com/typed-sigterm/is-fe-dead-today/releases/tag/${dateStr}`;
+    const content = await readLocalNews(dateStr);
+    const title = content.startsWith('Frontend Engineering is dead today')
+      ? `Frontend Engineering is dead on ${dateStr}`
+      : content.startsWith('Frontend Engineering is alive today')
+        ? `Frontend Engineering is alive on ${dateStr}`
+        : `Survival status of Frontend Engineering on ${dateStr}`;
 
     const $item = cheerio.load('<item/>', { xml: true });
     const item = $item('item');
-    item.append($item('<title>').text(dateStr));
+    item.append($item('<title>').text(title));
     item.append($item('<link>').text(link));
     item.append($item('<guid>').attr('isPermaLink', 'true').text(link));
-    item.append($item('<pubDate>').text(pubDate));
 
     channel.append(item);
   }
@@ -48,5 +52,3 @@ export function generateRSS(): string {
     lineSeparator: '\n',
   }) + '\n';
 }
-
-export { RSS_PATH };

@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Temporal } from '@js-temporal/polyfill';
 import { runAgent } from '../agent.js';
 import { validateEnv } from '../env.js';
@@ -6,6 +6,7 @@ import { fetchHN } from '../fetchers/hn.js';
 import { fetchJuyaAIDaily } from '../fetchers/juya-ai-daily.js';
 import { fetchAllRSS } from '../fetchers/rss.js';
 import { createNewsPR } from '../github.js';
+import { fileExists } from '../utils.js';
 
 async function main() {
   const env = validateEnv();
@@ -14,9 +15,10 @@ async function main() {
   const MM = String(now.month).padStart(2, '0');
   const dd = String(now.day).padStart(2, '0');
   const dateStr = `${yyyy}-${MM}-${dd}`;
+  const filePath = resolve(import.meta.dirname, `../../news/${yyyy}/${MM}/${dd}.md`);
 
-  if (existsSync(`news/${yyyy}/${MM}/${dd}.md`)) {
-    console.log(`news/${yyyy}/${MM}/${dd}.md already exists. Skipping.`);
+  if (await fileExists(filePath)) {
+    console.log(`${filePath} already exists. Skipping.`);
     return;
   }
 

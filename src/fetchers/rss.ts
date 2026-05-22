@@ -1,4 +1,4 @@
-import type { NewsItem } from '../types.js';
+import type { NewsItem } from '../utils.js';
 import { Temporal } from '@js-temporal/polyfill';
 import Parser from 'rss-parser';
 

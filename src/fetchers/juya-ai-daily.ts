@@ -1,4 +1,4 @@
-import type { NewsItem } from '../types.js';
+import type { NewsItem } from '../utils.js';
 import { Octokit } from 'octokit';
 
 const REPO_OWNER = 'imjuya';
