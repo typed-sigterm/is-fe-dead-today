@@ -46,7 +46,7 @@ Snippet: ${item.contentSnippet || 'No snippet available'}
   console.log(`Sending ${items.length} items to the agent...`);
 
   const result = client.callModel({
-    model: 'google/gemini-3.1-flash-lite',
+    model: 'x-ai/grok-4.3',
     instructions,
     input,
     tools: [readArticleTool],

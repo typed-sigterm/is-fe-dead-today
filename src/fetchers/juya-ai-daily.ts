@@ -1,11 +1,9 @@
 import type { NewsItem } from '../utils.js';
-import { Octokit } from 'octokit';
+import { Temporal } from '@js-temporal/polyfill';
 
-const REPO_OWNER = 'imjuya';
-const REPO_NAME = 'juya-ai-daily';
-const AUTHOR_ID = 204206495;
+const BASE_URL = 'https://daily.juya.uk/markdown';
 
-function extractOverviewItems(body: string, issueUrl: string): NewsItem[] | undefined {
+function extractOverviewItems(body: string, pageUrl: string): NewsItem[] | undefined {
   const start = body.indexOf('## 概览');
   if (start === -1)
     return undefined;
@@ -16,8 +14,6 @@ function extractOverviewItems(body: string, issueUrl: string): NewsItem[] | unde
 
   const items: NewsItem[] = [];
   let currentCategory = '';
-  let currentTitle = '';
-  let currentLink = '';
 
   for (const line of overview.split('\n')) {
     const trimmed = line.trim();
@@ -29,70 +25,46 @@ function extractOverviewItems(body: string, issueUrl: string): NewsItem[] | unde
       continue;
     }
 
-    // Title line: - Title text
-    const titleMatch = trimmed.match(/^-\s+(.+)/);
-    if (titleMatch) {
-      // If we already have a pending item, flush it
-      if (currentTitle) {
-        items.push({
-          id: `juya-overview-${items.length}`,
-          source: `juya-ai-daily · ${currentCategory}`,
-          title: currentTitle,
-          url: currentLink || issueUrl,
-          timestamp: 0,
-        });
-      }
-      currentTitle = titleMatch[1]!;
-      currentLink = '';
-      continue;
-    }
-
-    // Link line: [↗](url) `#n`
-    const linkMatch = trimmed.match(/\[↗\]\(([^)]+)\)/);
-    if (linkMatch && currentTitle) {
-      currentLink = linkMatch[1]!;
+    // Item line: - Title text [↗](url) `#n`
+    const itemMatch = trimmed.match(/^-\s+(.+)/);
+    if (itemMatch) {
+      const raw = itemMatch[1]!;
+      const linkMatch = raw.match(/\[↗\]\(([^)]+)\)/);
+      const title = raw
+        .replace(/\s*\[↗\]\([^)]+\)/, '')
+        .replace(/\s*`#\d+`\s*$/, '')
+        .trim();
       items.push({
         id: `juya-overview-${items.length}`,
         source: `juya-ai-daily · ${currentCategory}`,
-        title: currentTitle,
-        url: currentLink,
+        title,
+        url: linkMatch?.[1] ?? pageUrl,
         timestamp: 0,
       });
-      currentTitle = '';
-      currentLink = '';
     }
-  }
-
-  // Flush remaining item (if title has inline link or no link line)
-  if (currentTitle) {
-    items.push({
-      id: `juya-overview-${items.length}`,
-      source: `juya-ai-daily · ${currentCategory}`,
-      title: currentTitle,
-      url: currentLink || issueUrl,
-      timestamp: 0,
-    });
   }
 
   return items.length > 0 ? items : undefined;
 }
 
-export async function fetchJuyaAIDaily(): Promise<NewsItem[]> {
-  const octokit = new Octokit();
-  const { data: issues } = await octokit.rest.issues.listForRepo({
-    owner: REPO_OWNER,
-    repo: REPO_NAME,
-    sort: 'created',
-    direction: 'desc',
-    per_page: 10,
-  });
+async function fetchMarkdown(date: string): Promise<{ body: string, url: string } | undefined> {
+  const url = `${BASE_URL}/${date}.md`;
+  const res = await fetch(url);
+  if (!res.ok)
+    return undefined;
+  return { body: await res.text(), url };
+}
 
-  const issue = issues.find(i => i.user?.id === AUTHOR_ID);
-  if (!issue)
+export async function fetchJuyaAIDaily(): Promise<NewsItem[]> {
+  const now = Temporal.Now.zonedDateTimeISO();
+  // Today's daily may not be published yet; fall back to yesterday
+  const result = await fetchMarkdown(now.toPlainDate().toString())
+    ?? await fetchMarkdown(now.toPlainDate().subtract({ days: 1 }).toString());
+  if (!result)
     return [];
 
-  const body = issue.body ?? '';
-  const items = extractOverviewItems(body, issue.html_url);
+  const { body, url } = result;
+  const items = extractOverviewItems(body, url);
   if (items)
     return items;
 
@@ -101,12 +73,14 @@ export async function fetchJuyaAIDaily(): Promise<NewsItem[]> {
   if (snippet.length > 500)
     snippet = `${snippet.substring(0, 500)}...`;
 
+  const titleMatch = body.match(/^#\s+(.+)/m);
+
   return [{
-    id: `juya-${issue.number}`,
+    id: `juya-${url}`,
     source: 'juya-ai-daily',
-    title: issue.title,
-    url: issue.html_url,
-    timestamp: new Date(issue.created_at).getTime(),
+    title: titleMatch?.[1] ?? 'juya-ai-daily',
+    url,
+    timestamp: Date.now(),
     contentSnippet: snippet,
   }];
 }
