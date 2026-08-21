@@ -12,6 +12,17 @@
     </link>
     <item>
       <title>
+        Frontend Engineering is alive on 2026-08-20
+      </title>
+      <link>
+        http://github.com/typed-sigterm/is-fe-dead-today/releases/tag/2026-08-20
+      </link>
+      <guid isPermaLink="true">
+        http://github.com/typed-sigterm/is-fe-dead-today/releases/tag/2026-08-20
+      </guid>
+    </item>
+    <item>
+      <title>
         Frontend Engineering is alive on 2026-08-19
       </title>
       <link>
@@ -140,17 +151,6 @@
       </link>
       <guid isPermaLink="true">
         http://github.com/typed-sigterm/is-fe-dead-today/releases/tag/2026-08-08
-      </guid>
-    </item>
-    <item>
-      <title>
-        Frontend Engineering is alive on 2026-08-07
-      </title>
-      <link>
-        http://github.com/typed-sigterm/is-fe-dead-today/releases/tag/2026-08-07
-      </link>
-      <guid isPermaLink="true">
-        http://github.com/typed-sigterm/is-fe-dead-today/releases/tag/2026-08-07
       </guid>
     </item>
   </channel>
